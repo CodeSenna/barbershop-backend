@@ -25,7 +25,7 @@ app.use(express.json());
 
 // Habilitar CORS para o frontend hospedado no Vercel
 app.use(cors({
-  origin: 'https://barbershop-frontend-nine.vercel.app/', // Substitua pela URL real do seu frontend no Vercel
+  origin: 'https://barbershop-frontend-nine.vercel.app', // Substitua pela URL real do seu frontend no Vercel
   credentials: true,
 }));
 
