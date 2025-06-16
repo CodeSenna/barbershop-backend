@@ -23,8 +23,11 @@ const app = express();
 // Middleware para body parser
 app.use(express.json());
 
-// Habilitar CORS
-app.use(cors());
+// Habilitar CORS para o frontend hospedado no Vercel
+app.use(cors({
+  origin: 'https://barbershop-frontend-nine.vercel.app/', // Substitua pela URL real do seu frontend no Vercel
+  credentials: true,
+}));
 
 // Criar pasta de uploads se não existir
 const uploadsDir = path.join(__dirname, 'uploads/referencias');
@@ -32,11 +35,10 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Servir arquivos estáticos
+// Servir arquivos estáticos para uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Montar rotas
+// Montar rotas da API
 app.use('/api/auth', auth);
 app.use('/api/servicos', servicos);
 app.use('/api/agendamentos', agendamentos);
@@ -44,7 +46,6 @@ app.use('/api/avaliacoes', avaliacoes);
 
 // Rota para horários disponíveis (simulação com horários fixos)
 app.get('/api/horarios', (req, res) => {
-  // Horários fixos para simulação
   const horarios = [
     '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'
   ];
@@ -55,10 +56,7 @@ app.get('/api/horarios', (req, res) => {
   });
 });
 
-// Rota para servir o frontend
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../frontend', 'index.html'));
-});
+// REMOVIDO: rota para servir frontend, pois frontend estará no Vercel
 
 // Middleware de tratamento de erros
 app.use(errorHandler);
@@ -72,6 +70,5 @@ const server = app.listen(PORT, () => {
 // Lidar com rejeições de promessas não tratadas
 process.on('unhandledRejection', (err, promise) => {
   console.log(`Erro: ${err.message}`);
-  // Fechar servidor e sair do processo
   server.close(() => process.exit(1));
 });
