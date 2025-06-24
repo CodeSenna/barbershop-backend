@@ -2,23 +2,21 @@ const Agendamento = require('../models/Agendamento');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const sendEmail = require('../utils/sendEmail');
-const path = require('path');
+const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 
 // @desc    Obter todos os agendamentos
 // @route   GET /api/agendamentos
 // @access  Privado
 exports.getAgendamentos = asyncHandler(async (req, res, next) => {
-  // Se o usuário não for admin, mostrar apenas seus agendamentos
   let query;
-  
+
   if (req.user.role !== 'admin') {
     query = Agendamento.find({ usuario: req.user.id });
   } else {
     query = Agendamento.find();
   }
 
-  // Adicionar populate
   query = query.populate([
     { path: 'usuario', select: 'nome email telefone' },
     { path: 'servico', select: 'nome descricao preco duracao tipo' }
@@ -43,16 +41,11 @@ exports.getAgendamento = asyncHandler(async (req, res, next) => {
   ]);
 
   if (!agendamento) {
-    return next(
-      new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404)
-    );
+    return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
   }
 
-  // Verificar se o agendamento pertence ao usuário ou se é admin
   if (agendamento.usuario._id.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(
-      new ErrorResponse(`Usuário não autorizado a acessar este agendamento`, 401)
-    );
+    return next(new ErrorResponse(`Usuário não autorizado a acessar este agendamento`, 401));
   }
 
   res.status(200).json({
@@ -65,15 +58,12 @@ exports.getAgendamento = asyncHandler(async (req, res, next) => {
 // @route   POST /api/agendamentos
 // @access  Privado
 exports.createAgendamento = asyncHandler(async (req, res, next) => {
-  // Adicionar usuário ao corpo da requisição
   req.body.usuario = req.user.id;
 
   const agendamento = await Agendamento.create(req.body);
 
-  // Enviar e-mail de confirmação
   try {
     const servico = await agendamento.populate('servico');
-    
     const message = `Olá ${req.user.nome},\n\nSeu agendamento foi realizado com sucesso!\n\nDetalhes do agendamento:\nServiço: ${servico.servico.nome}\nData: ${new Date(agendamento.data).toLocaleDateString('pt-BR')}\nHorário: ${agendamento.horario}\n\nAtenciosamente,\nEquipe Barbearia`;
 
     await sendEmail({
@@ -83,7 +73,6 @@ exports.createAgendamento = asyncHandler(async (req, res, next) => {
     });
   } catch (err) {
     console.log('Erro ao enviar e-mail de confirmação:', err);
-    // Não interrompe o fluxo se o e-mail falhar
   }
 
   res.status(201).json({
@@ -99,16 +88,11 @@ exports.updateAgendamento = asyncHandler(async (req, res, next) => {
   let agendamento = await Agendamento.findById(req.params.id);
 
   if (!agendamento) {
-    return next(
-      new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404)
-    );
+    return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
   }
 
-  // Verificar se o agendamento pertence ao usuário ou se é admin
   if (agendamento.usuario.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(
-      new ErrorResponse(`Usuário não autorizado a atualizar este agendamento`, 401)
-    );
+    return next(new ErrorResponse(`Usuário não autorizado a atualizar este agendamento`, 401));
   }
 
   agendamento = await Agendamento.findByIdAndUpdate(req.params.id, req.body, {
@@ -129,24 +113,11 @@ exports.deleteAgendamento = asyncHandler(async (req, res, next) => {
   const agendamento = await Agendamento.findById(req.params.id);
 
   if (!agendamento) {
-    return next(
-      new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404)
-    );
+    return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
   }
 
-  // Verificar se o agendamento pertence ao usuário ou se é admin
   if (agendamento.usuario.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(
-      new ErrorResponse(`Usuário não autorizado a excluir este agendamento`, 401)
-    );
-  }
-
-  // Se houver imagem de referência, excluir
-  if (agendamento.imagemReferencia) {
-    const imagePath = path.join(__dirname, '../uploads/referencias/', agendamento.imagemReferencia);
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
-    }
+    return next(new ErrorResponse(`Usuário não autorizado a excluir este agendamento`, 401));
   }
 
   await agendamento.deleteOne();
@@ -157,43 +128,39 @@ exports.deleteAgendamento = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Upload de imagem de referência para agendamento
+// @desc    Upload de imagem de referência (Cloudinary)
 // @route   PUT /api/agendamentos/:id/imagem
 // @access  Privado
 exports.uploadImagem = asyncHandler(async (req, res, next) => {
   const agendamento = await Agendamento.findById(req.params.id);
 
   if (!agendamento) {
-    return next(
-      new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404)
-    );
+    return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
   }
 
-  // Verificar se o agendamento pertence ao usuário ou se é admin
   if (agendamento.usuario.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(
-      new ErrorResponse(`Usuário não autorizado a atualizar este agendamento`, 401)
-    );
+    return next(new ErrorResponse(`Usuário não autorizado a atualizar este agendamento`, 401));
   }
 
   if (!req.file) {
     return next(new ErrorResponse(`Por favor, envie um arquivo`, 400));
   }
 
-  // Se já existir uma imagem, excluir
-  if (agendamento.imagemReferencia) {
-    const imagePath = path.join(__dirname, '../uploads/referencias/', agendamento.imagemReferencia);
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
-    }
-  }
+  // Envia a imagem para o Cloudinary
+  const result = await cloudinary.uploader.upload(req.file.path, {
+    folder: 'barbershop/referencias',
+  });
 
-  // Atualizar agendamento com o nome do arquivo
-  agendamento.imagemReferencia = req.file.filename;
+  // Remove o arquivo local temporário
+  fs.unlinkSync(req.file.path);
+
+  // Atualiza o agendamento com a URL da imagem no Cloudinary
+  agendamento.imagemReferencia = result.secure_url;
   await agendamento.save();
 
   res.status(200).json({
     success: true,
-    data: agendamento
+    data: agendamento,
+    imagemUrl: result.secure_url
   });
 });

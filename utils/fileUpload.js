@@ -1,64 +1,53 @@
-const path = require("path");
-const multer = require("multer");
-const ErrorResponse = require("./errorResponse");
-
-// Configuração de armazenamento para imagens de referência de agendamento
-const storageReferencias = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/referencias/");
-  },
-  filename: function (req, file, cb) {
-    // Usar ID do agendamento (se disponível) ou timestamp + nome original
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
-
-// Configuração de armazenamento para imagens de serviços
-const storageServicos = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/servicos/");
-  },
-  filename: function (req, file, cb) {
-    // Usar ID do serviço (se disponível na atualização) ou timestamp + nome original
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary'); // seu config do Cloudinary
+const ErrorResponse = require('./errorResponse');
 
 // Função de filtro de arquivo para aceitar apenas imagens
 function checkFileType(file, cb) {
-  // Tipos de arquivo permitidos
   const filetypes = /jpeg|jpg|png|gif/;
-  // Checar extensão
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  // Checar mimetype
+  const extname = filetypes.test(file.originalname.toLowerCase());
   const mimetype = filetypes.test(file.mimetype);
 
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb(new ErrorResponse("Erro: Apenas imagens são permitidas!", 400));
+    cb(new ErrorResponse('Erro: Apenas imagens são permitidas!', 400));
   }
 }
 
-// Middleware de upload para imagens de referência
+// Storage Cloudinary para imagens de referência
+const storageReferencias = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'referencias',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'gif'],
+  },
+});
+
+// Storage Cloudinary para imagens de serviços (se quiser manter)
+const storageServicos = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'servicos',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'gif'],
+  },
+});
+
 const uploadReferencia = multer({
   storage: storageReferencias,
-  limits: { fileSize: 1024 * 1024 * 5 }, // Limite de 5MB
-  fileFilter: function (req, file, cb) {
+  limits: { fileSize: 1024 * 1024 * 5 },
+  fileFilter: (req, file, cb) => {
     checkFileType(file, cb);
   },
 });
 
-// Middleware de upload para imagens de serviços
 const uploadServicoImagem = multer({
   storage: storageServicos,
-  limits: { fileSize: 1024 * 1024 * 5 }, // Limite de 5MB
-  fileFilter: function (req, file, cb) {
+  limits: { fileSize: 1024 * 1024 * 5 },
+  fileFilter: (req, file, cb) => {
     checkFileType(file, cb);
   },
 });
 
 module.exports = { uploadReferencia, uploadServicoImagem };
-
