@@ -34,7 +34,8 @@ app.use(express.json());
 // Configurar CORS para Vercel + localhost
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://barbershop-frontend-sigma.vercel.app'
+  'https://barbershop-frontend-sigma.vercel.app',
+  'https://barbershop-frontend-c6urlmuhj-matheus-projects-c76c4863.vercel.app' // seu domínio do frontend no Vercel
 ];
 
 const corsOptions = {
