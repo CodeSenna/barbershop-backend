@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const ErrorResponse = require('../utils/errorResponse');
-const asyncHandler = require('./async'); // seu middleware para tratar erros async
+const asyncHandler = require('./async'); // middleware para tratar erros async
 
 // Middleware para proteger rotas (exige token válido)
 exports.protect = asyncHandler(async (req, res, next) => {
@@ -48,9 +48,7 @@ exports.authorize = (...roles) => {
   };
 };
 
-// Agendamento do routes/agendamentos.js
-const ErrorResponse = require('../utils/errorResponse');
-
+// Middleware para verificar se o e-mail foi confirmado
 exports.emailConfirmado = (req, res, next) => {
   if (req.user && req.user.emailConfirmado) {
     return next();
