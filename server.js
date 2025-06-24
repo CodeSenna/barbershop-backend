@@ -9,33 +9,22 @@ const errorHandler = require('./middleware/error');
 // Carregar variáveis de ambiente
 dotenv.config();
 
-// Teste: imprimir variáveis de ambiente
-// console.log('PORT:', process.env.PORT);
-// console.log('MONGO_URI:', process.env.MONGO_URI);
-// console.log('JWT_SECRET:', process.env.JWT_SECRET);
-
 // Conectar ao banco de dados
 connectDB();
 
-// Rotas
-const auth = require('./routes/auth');
-const servicos = require('./routes/servicos');
-const agendamentos = require('./routes/agendamentos');
-const avaliacoes = require('./routes/avaliacoes');
-
 const app = express();
 
-// Middleware para body parser
+// Middleware para body parser JSON
 app.use(express.json());
 
-// *********************************
+// Serve arquivos estáticos da pasta uploads (para imagens, etc)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Habilitar CORS para o frontend hospedado no Vercel
-// Configurar CORS para Vercel + localhost
+// Configurar CORS
 const allowedOrigins = [
   'http://localhost:5173',
   'https://barbershop-frontend-sigma.vercel.app',
-  'https://barbershop-frontend-c6urlmuhj-matheus-projects-c76c4863.vercel.app' // seu domínio do frontend no Vercel
+  'https://barbershop-frontend-c6urlmuhj-matheus-projects-c76c4863.vercel.app'
 ];
 
 const corsOptions = {
@@ -49,30 +38,27 @@ const corsOptions = {
   credentials: true,
 };
 
-// Responder requisições OPTIONS (preflight)
+// Reponder requisições OPTIONS (preflight)
 app.options('*', cors(corsOptions));
-
-// Usar o CORS para demais requisições
+// Usar CORS nas demais requisições
 app.use(cors(corsOptions));
-// Montar rotas da API
-app.use('/api/auth', auth);
-app.use('/api/servicos', servicos);
-app.use('/api/agendamentos', agendamentos);
-app.use('/api/avaliacoes', avaliacoes);
 
-// Rota para horários disponíveis (simulação com horários fixos)
+// Rotas da API
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/servicos', require('./routes/servicos'));
+app.use('/api/agendamentos', require('./routes/agendamentos'));
+app.use('/api/avaliacoes', require('./routes/avaliacoes'));
+
+// Rota para horários disponíveis (simulação)
 app.get('/api/horarios', (req, res) => {
   const horarios = [
     '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'
   ];
-  
   res.status(200).json({
     success: true,
     data: horarios
   });
 });
-
-// REMOVIDO: rota para servir frontend, pois frontend estará no Vercel
 
 // Middleware de tratamento de erros
 app.use(errorHandler);
@@ -83,7 +69,7 @@ const server = app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
 
-// Lidar com rejeições de promessas não tratadas
+// Lidando com rejeições não tratadas
 process.on('unhandledRejection', (err, promise) => {
   console.log(`Erro: ${err.message}`);
   server.close(() => process.exit(1));
