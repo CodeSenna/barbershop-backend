@@ -9,6 +9,11 @@ const errorHandler = require('./middleware/error');
 // Carregar variáveis de ambiente
 dotenv.config();
 
+// Teste: imprimir variáveis de ambiente
+// console.log('PORT:', process.env.PORT);
+// console.log('MONGO_URI:', process.env.MONGO_URI);
+// console.log('JWT_SECRET:', process.env.JWT_SECRET);
+
 // Conectar ao banco de dados
 connectDB();
 
