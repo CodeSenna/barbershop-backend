@@ -47,3 +47,13 @@ exports.authorize = (...roles) => {
     next();
   };
 };
+
+// Agendamento do routes/agendamentos.js
+const ErrorResponse = require('../utils/errorResponse');
+
+exports.emailConfirmado = (req, res, next) => {
+  if (req.user && req.user.emailConfirmado) {
+    return next();
+  }
+  return next(new ErrorResponse('Por favor, confirme seu e-mail antes de continuar', 401));
+};
