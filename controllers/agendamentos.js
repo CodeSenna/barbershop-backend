@@ -9,25 +9,16 @@ const fs = require('fs');
 // @route   GET /api/agendamentos
 // @access  Privado
 exports.getAgendamentos = asyncHandler(async (req, res, next) => {
-  let query;
-
-  if (req.user.role !== 'admin') {
-    query = Agendamento.find({ usuario: req.user.id });
-  } else {
-    query = Agendamento.find();
-  }
-
-  query = query.populate([
+  const filtro = req.user.role !== 'admin' ? { usuario: req.user.id } : {};
+  const agendamentos = await Agendamento.find(filtro).populate([
     { path: 'usuario', select: 'nome email telefone' },
-    { path: 'servico', select: 'nome descricao preco duracao tipo' }
+    { path: 'servico', select: 'nome descricao preco duracao tipo' },
   ]);
-
-  const agendamentos = await query;
 
   res.status(200).json({
     success: true,
     count: agendamentos.length,
-    data: agendamentos
+    data: agendamentos,
   });
 });
 
@@ -37,21 +28,17 @@ exports.getAgendamentos = asyncHandler(async (req, res, next) => {
 exports.getAgendamento = asyncHandler(async (req, res, next) => {
   const agendamento = await Agendamento.findById(req.params.id).populate([
     { path: 'usuario', select: 'nome email telefone' },
-    { path: 'servico', select: 'nome descricao preco duracao tipo' }
+    { path: 'servico', select: 'nome descricao preco duracao tipo' },
   ]);
 
-  if (!agendamento) {
+  if (!agendamento)
     return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
-  }
 
-  if (agendamento.usuario._id.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(new ErrorResponse(`Usuário não autorizado a acessar este agendamento`, 401));
-  }
+  const isDono = agendamento.usuario._id.toString() === req.user.id;
+  if (!isDono && req.user.role !== 'admin')
+    return next(new ErrorResponse(`Usuário não autorizado`, 401));
 
-  res.status(200).json({
-    success: true,
-    data: agendamento
-  });
+  res.status(200).json({ success: true, data: agendamento });
 });
 
 // @desc    Criar um novo agendamento
@@ -59,73 +46,70 @@ exports.getAgendamento = asyncHandler(async (req, res, next) => {
 // @access  Privado
 exports.createAgendamento = asyncHandler(async (req, res, next) => {
   req.body.usuario = req.user.id;
-
   const agendamento = await Agendamento.create(req.body);
 
   try {
     const servico = await agendamento.populate('servico');
-    const message = `Olá ${req.user.nome},\n\nSeu agendamento foi realizado com sucesso!\n\nDetalhes do agendamento:\nServiço: ${servico.servico.nome}\nData: ${new Date(agendamento.data).toLocaleDateString('pt-BR')}\nHorário: ${agendamento.horario}\n\nAtenciosamente,\nEquipe Barbearia`;
+    const mensagem = `
+Olá ${req.user.nome},
+
+Seu agendamento foi realizado com sucesso!
+
+Detalhes do agendamento:
+Serviço: ${servico.servico.nome}
+Data: ${new Date(agendamento.data).toLocaleDateString('pt-BR')}
+Horário: ${agendamento.horario}
+
+Atenciosamente,
+Equipe Barbearia`;
 
     await sendEmail({
       email: req.user.email,
       subject: 'Confirmação de Agendamento - Barbearia',
-      message
+      message: mensagem,
     });
   } catch (err) {
-    console.log('Erro ao enviar e-mail de confirmação:', err);
+    console.error('Erro ao enviar e-mail de confirmação:', err);
   }
 
-  res.status(201).json({
-    success: true,
-    data: agendamento
-  });
+  res.status(201).json({ success: true, data: agendamento });
 });
 
-// @desc    Atualizar um agendamento
+// @desc    Atualizar agendamento
 // @route   PUT /api/agendamentos/:id
 // @access  Privado
 exports.updateAgendamento = asyncHandler(async (req, res, next) => {
   let agendamento = await Agendamento.findById(req.params.id);
-
-  if (!agendamento) {
+  if (!agendamento)
     return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
-  }
 
-  if (agendamento.usuario.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(new ErrorResponse(`Usuário não autorizado a atualizar este agendamento`, 401));
-  }
+  const isDono = agendamento.usuario.toString() === req.user.id;
+  if (!isDono && req.user.role !== 'admin')
+    return next(new ErrorResponse(`Usuário não autorizado`, 401));
 
   agendamento = await Agendamento.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
-    runValidators: true
+    runValidators: true,
   });
 
-  res.status(200).json({
-    success: true,
-    data: agendamento
-  });
+  res.status(200).json({ success: true, data: agendamento });
 });
 
-// @desc    Excluir um agendamento
+// @desc    Excluir agendamento
 // @route   DELETE /api/agendamentos/:id
 // @access  Privado
 exports.deleteAgendamento = asyncHandler(async (req, res, next) => {
   const agendamento = await Agendamento.findById(req.params.id);
-
-  if (!agendamento) {
+  if (!agendamento)
     return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
-  }
 
-  if (agendamento.usuario.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(new ErrorResponse(`Usuário não autorizado a excluir este agendamento`, 401));
-  }
+  const isDono = agendamento.usuario.toString() === req.user.id;
+  if (!isDono && req.user.role !== 'admin')
+    return next(new ErrorResponse(`Usuário não autorizado`, 401));
 
   await agendamento.deleteOne();
 
-  res.status(200).json({
-    success: true,
-    data: {}
-  });
+  res.status(200).json({ success: true, data: {} });
 });
 
 // @desc    Upload de imagem de referência (Cloudinary)
@@ -133,34 +117,34 @@ exports.deleteAgendamento = asyncHandler(async (req, res, next) => {
 // @access  Privado
 exports.uploadImagem = asyncHandler(async (req, res, next) => {
   const agendamento = await Agendamento.findById(req.params.id);
-
-  if (!agendamento) {
+  if (!agendamento)
     return next(new ErrorResponse(`Agendamento não encontrado com id ${req.params.id}`, 404));
-  }
 
-  if (agendamento.usuario.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(new ErrorResponse(`Usuário não autorizado a atualizar este agendamento`, 401));
-  }
+  const isDono = agendamento.usuario.toString() === req.user.id;
+  if (!isDono && req.user.role !== 'admin')
+    return next(new ErrorResponse(`Usuário não autorizado`, 401));
 
-  if (!req.file) {
+  if (!req.file)
     return next(new ErrorResponse(`Por favor, envie um arquivo`, 400));
-  }
 
   // Envia a imagem para o Cloudinary
   const result = await cloudinary.uploader.upload(req.file.path, {
     folder: 'barbershop/referencias',
   });
 
-  // Remove o arquivo local temporário
+  // DEBUG
+  console.log('Imagem enviada ao Cloudinary:', result);
+
+  // Remove o arquivo temporário
   fs.unlinkSync(req.file.path);
 
-  // Atualiza o agendamento com a URL da imagem no Cloudinary
+  // Atualiza o agendamento com a URL da imagem
   agendamento.imagemReferencia = result.secure_url;
   await agendamento.save();
 
   res.status(200).json({
     success: true,
     data: agendamento,
-    imagemUrl: result.secure_url
+    imagemUrl: result.secure_url,
   });
 });
