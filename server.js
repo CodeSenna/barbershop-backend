@@ -29,10 +29,23 @@ const app = express();
 app.use(express.json());
 
 // Habilitar CORS para o frontend hospedado no Vercel
+// Configurar CORS para Vercel + localhost
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://barbershop-frontend-sigma.vercel.app'
+];
+
 app.use(cors({
-  origin: '*', // libera qualquer origem
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
+
 
 // Criar pasta de uploads se não existir
 const uploadsDir = path.join(__dirname, 'uploads/referencias');
