@@ -1,6 +1,6 @@
 const express = require("express");
 const { protect, authorize } = require("../middleware/auth");
-const { uploadServicoImagem } = require("../utils/fileUpload"); // importação corrigida
+const { uploadServicoImagem } = require("../utils/fileUpload");
 
 const {
   getServicos,

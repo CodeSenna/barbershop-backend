@@ -16,7 +16,7 @@ function checkFileType(file, cb) {
   }
 }
 
-// Storage para imagens de referência
+// Storage Cloudinary para imagens de referência
 const storageReferencia = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -25,7 +25,7 @@ const storageReferencia = new CloudinaryStorage({
   }
 });
 
-// Storage para imagens de serviços
+// Storage Cloudinary para imagens de serviço
 const storageServico = new CloudinaryStorage({
   cloudinary,
   params: {
